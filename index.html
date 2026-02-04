@@ -4,42 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org"></script>
+    <title>Коллекционер карт</title>
     <style>
-        body { background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        img#avatar { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--tg-theme-button-color); }
-        .balance { font-size: 24px; margin: 20px 0; font-weight: bold; }
-        button { padding: 15px 30px; font-size: 18px; background: var(--tg-theme-button-color, #248bcf); color: var(--tg-theme-button-text-color, #fff); border: none; border-radius: 15px; cursor: pointer; }
-        button:active { transform: scale(0.95); }
+        body { background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #000); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card-deck { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+        .card { width: 100px; height: 150px; background: var(--tg-theme-secondary-bg-color, #f0f0f0); margin: 5px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); font-size: 30px; }
+        .card.owned { background: var(--tg-theme-button-color, #007bff); color: var(--tg-theme-button-text-color, #fff); }
+        button { padding: 12px 24px; background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
     </style>
 </head>
 <body>
-    <img id="avatar" src="" alt="Ava">
-    <h2 id="username">Загрузка...</h2>
-    <div class="balance">Скорлупки: <span id="score">100</span></div>
-    <button onclick="clickEgg()">Собрать скорлупку!</button>
+    <h1>Моя коллекция карт</h1>
+    <div id="cardDeck" class="card-deck"></div>
+    <p>Всего карт: <span id="cardCount">0</span> / 5</p>
+    <button onclick="revealCard()">Получить новую карту</button>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
+        tg.ready();
+        tg.expand();
 
-        let score = 100;
-        let user = tg.initDataUnsafe?.user;
+        const cards = ['⭐', '🌙', '☀️', '💧', '🔥'];
+        let ownedCards = JSON.parse(localStorage.getItem('ownedCards')) || [];
+        const cardDeckElement = document.getElementById('cardDeck');
+        const cardCountElement = document.getElementById('cardCount');
 
-        // Ставим данные из Телеграм
-        if (user) {
-            document.getElementById('username').innerText = user.first_name + (user.last_name ? " " + user.last_name : "");
-            if (user.photo_url) {
-                document.getElementById('avatar').src = user.photo_url;
-            } else {
-                document.getElementById('avatar').src = "https://ui-avatars.com" + user.first_name;
+        function renderDeck() {
+            cardDeckElement.innerHTML = '';
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                if (ownedCards.includes(card)) {
+                    cardElement.classList.add('owned');
+                    cardElement.innerText = card;
+                } else {
+                    cardElement.innerText = '?';
+                }
+                cardDeckElement.appendChild(cardElement);
+            });
+            cardCountElement.innerText = ownedCards.length;
+        }
+
+        function revealCard() {
+            if (ownedCards.length === cards.length) {
+                tg.showPopup({ title: "Ура!", message: "Вы собрали всю коллекцию!" });
+                return;
             }
+
+            let newCard;
+            do {
+                const randomIndex = Math.floor(Math.random() * cards.length);
+                newCard = cards[randomIndex];
+            } while (ownedCards.includes(newCard));
+
+            ownedCards.push(newCard);
+            localStorage.setItem('ownedCards', JSON.stringify(ownedCards));
+            renderDeck();
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.MainButton.setText(`Получена карта: ${newCard}`).show();
         }
 
-        function clickEgg() {
-            score++;
-            document.getElementById('score').innerText = score;
-            tg.HapticFeedback.impactOccurred('medium'); // Вибрация при клике
-        }
+        renderDeck(); // Рендерим коллекцию при загрузке
     </script>
 </body>
 </html>
